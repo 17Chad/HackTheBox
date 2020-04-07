@@ -1,0 +1,21 @@
+1. Traceback ip - 10.10.10.181
+2. Looking at the website while running NMAP. Says the site has been owned and a backdoor left. This is also a Linux Machine.
+3. Right click -> view source -> hidden txt: "Some of the best web shells that you might need ;)" 
+4. If you Google that phrase -> https://github.com/TheBinitGhimire/Web-Shells
+5. Interesting. Lets wfuzz to find any directories that might have leftover shells this person is referring to. 
+5a. nano shells.txt -> add all shells on the github page one after another. 
+5b. wfuzz -u http://10.10.10.181/FUZZ -w shells.txt 
+5c. Everything 404's except "smevk.php"
+6. Go to http://10.10.10.181/smevk.php in the browser. Nice, login page. "SmEvK_PaThAn Shell V3"
+7. Google "SmEvK_PaThAn Shell V3" -> https://github.com/TheBinitGhimire/Web-Shells/blob/master/smevk.php -> Looking at the php shell, user = admin and pass = admin. Let's try. 
+8. Lol nice, I'm in. Okay lots going on. It says we are in the /var/www/html folder. Let's look around. 
+9. In "/home" we see three users: 1. root 2. sysadmin and 3. webadmin. Looks like we can upload files. That leaves a lot of room to work. 
+10. Trying to upload php reverse shells isn't working very well.
+11. Instead, I deleted webadmin's "authorized keys" and made a copy of my own RSA key using ssh-keygen and uploaded my key as "authorized_keys". 
+12. ssh -i id_rsa webadmin@10.10.10.181
+13. In. cat .bash_history -> sudo -u sysadmin /home/sysadmin/luvit shell.lua
+14. Now I am sysadmin. Nice. cd /home/sysadmin -> cat user.txt -> user own complete. Now for root.
+15. After screwing around for a while, in the webadmin folder there is a pspy64 elf. Running it and you get lots of updates.
+16. Looking at the notes and running around, go to /etc/update_motd.d/ and you'll find the header for the greeting. 
+17. echo "cat /root/root.txt" >> 00-header
+18. Open up a second terminal, relogin as webadmin, boom root.  
